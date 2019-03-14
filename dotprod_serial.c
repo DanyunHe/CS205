@@ -42,9 +42,26 @@ for (i=0; i<len; i++) {
 /* Perform the dot product */
 sum = 0.0;
 get_time(&tstart);
+/*
 for (i=0; i<len; i++) 
   {
     sum += (a[i] * b[i]);
+  }*/
+
+/* Perform the dot product with 2x loop unrolling 
+for (i=0; i<len; i+=2) 
+  {
+    sum += (a[i] * b[i]);
+    sum += (a[i+1] * b[i+1]);
+  }*/
+
+ /* Perform the dot product with 4x loop unrolling*/
+for (i=0; i<len; i+=4) 
+  {
+    sum += (a[i] * b[i]);
+    sum += (a[i+1] * b[i+1]);
+    sum += (a[i+2] * b[i+2]);
+    sum += (a[i+3] * b[i+3]);
   }
 get_time(&tend);
 
