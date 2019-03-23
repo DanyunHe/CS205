@@ -24,16 +24,17 @@ void jacobi(int nsweeps, int n, double* u, double* f)
     utmp[n] = u[n];
 
     /* YOUR SOLUTION HERE */
-    #pragma omp parallel
+    #pragma omp parallel shared(utmp,u) private(i,sweep)
     for (sweep = 0; sweep < nsweeps; sweep += 2) {
 
         /* Old data in u; new data in utmp */
-        #pragma omp for shared(utmp,u,n) private(i)
+        #pragma omp for 
+    
         for (i = 1; i < n; ++i){
             utmp[i] = (u[i-1] + u[i+1] + h2*f[i])/2;}
         
         /* Old data in utmp; new data in u */
-        #pragma omp for shared(utmp,u,n) private(i)
+        #pragma omp for 
         for (i = 1; i < n; ++i){
             u[i] = (utmp[i-1] + utmp[i+1] + h2*f[i])/2;
         }
@@ -54,6 +55,15 @@ void write_solution(int n, double* u, const char* fname)
     fclose(fp);
 }
 
+int power(int base,int power){
+    int i;
+    int result=1;
+    for(i=0;i<power;i++){
+        result=result*base;
+    }
+    return result;
+}
+
 
 int main(int argc, char** argv)
 {
@@ -62,8 +72,9 @@ int main(int argc, char** argv)
     double* u;
     double* f;
     double h;
-    double tstart, tend;
     char* fname;
+    int k;
+    double tstart,tend;
 
     /* Process arguments */
     n      = (argc > 1) ? atoi(argv[1]) : 100;
@@ -75,24 +86,29 @@ int main(int argc, char** argv)
     #pragma omp parallel
     if (omp_get_thread_num() == 0)
         printf("Threads: %d\n", omp_get_num_threads());
+    
 
-    /* Allocate and initialize arrays */
-    u = (double*) malloc( (n+1) * sizeof(double) );
-    f = (double*) malloc( (n+1) * sizeof(double) );
-    memset(u, 0, (n+1) * sizeof(double));
-    for (i = 0; i <= n; ++i)
-        f[i] = i * h;
+    /* Run the solver n=10^k,k=5,6,7,8,nsteps=100 */
+    for(k=5;k<9;k++){
+        n=power(10,k);
+         /* Allocate and initialize arrays */
+        u = (double*) malloc( (n+1) * sizeof(double) );
+        f = (double*) malloc( (n+1) * sizeof(double) );
+        memset(u, 0, (n+1) * sizeof(double));
+        for (i = 0; i <= n; ++i)
+            f[i] = i * h;
+        
+        tstart= omp_get_wtime();
+        jacobi(nsteps, n, u, f);
+        tend = omp_get_wtime();
+         /* Timing summary */
+        printf("ncells: %d\n"
+               "nsteps: %d\n"
+               "Elapsed time: %g s\n", 
+                n, nsteps, tend-tstart);
+    }
+   
 
-    /* Run the solver */
-    tstart = omp_get_wtime();
-    jacobi(nsteps, n, u, f);
-    tend = omp_get_wtime();
-
-    /* Timing summary */
-    printf("n: %d\n"
-           "nsteps: %d\n"
-           "Elapsed time: %g s\n", 
-           n, nsteps, tend-tstart);
 
     /* Write the results */
     if (fname)

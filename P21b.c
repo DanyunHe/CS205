@@ -24,30 +24,57 @@ void jacobi(int nsweeps, int n, double* u, double* f)
     utmp[0] = u[0];
     utmp[n] = u[n];
 
-    // #pragma acc data copy(u), create(utmp) # a single copy of data
-    // #pragma acc kernels
     for (sweep = 0; sweep < nsweeps; sweep += 2) {
         
-        /* Old data in u; new data in utmp */
+        /* Old data in u; new data in utmp 
         for (i = 1; i < n; ++i)
             utmp[i] = (u[i-1] + u[i+1] + h2*f[i])/2;
         
-        /* Old data in utmp; new data in u */
+        /* Old data in utmp; new data in u 
         for (i = 1; i < n; ++i)
-            u[i] = (utmp[i-1] + utmp[i+1] + h2*f[i])/2;
+            u[i] = (utmp[i-1] + utmp[i+1] + h2*f[i])/2;*/
 
+
+        /* 2x loop unrolling */
+        /* Old data in u; new data in utmp 
+        for (i = 1; i < n-2; i+=2){
+            utmp[i] = (u[i-1] + u[i+1] + h2*f[i])/2;
+            utmp[i+1] = (u[i+1-1] + u[i+1+1] + h2*f[i+1])/2;
+        }
+        utmp[n-1]=(u[n-1-1] + u[n-1+1] + h2*f[n-1])/2;*/
+        /* Old data in utmp; new data in u 
+        for (i = 1; i < n-2; i+=2){
+            u[i] = (utmp[i-1] + utmp[i+1] + h2*f[i])/2;
+            u[i+1] = (utmp[i+1-1] + utmp[i+1+1] + h2*f[i+1])/2;
+        }
+        u[n-1] = (utmp[n-1-1] + utmp[n-1+1] + h2*f[n-1])/2;*/
+
+        /* 4x loop unrolling */
+        /* Old data in u; new data in utmp */
+        for (i = 1; i < n-4; i+=4){
+            utmp[i] = (u[i-1] + u[i+1] + h2*f[i])/2;
+            utmp[i+1] = (u[i+1-1] + u[i+1+1] + h2*f[i+1])/2;
+            utmp[i+2] = (u[i+2-1] + u[i+2+1] + h2*f[i+2])/2;
+            utmp[i+3] = (u[i+3-1] + u[i+3+1] + h2*f[i+3])/2;
+        }
+        utmp[n-3]=(u[n-3-1] + u[n-3+1] + h2*f[n-3])/2;
+        utmp[n-2]=(u[n-2-1] + u[n-2+1] + h2*f[n-2])/2;
+        utmp[n-1]=(u[n-1-1] + u[n-1+1] + h2*f[n-1])/2;
+        /* Old data in utmp; new data in u */
+        for (i = 1; i < n-4; i+=4){
+            u[i] = (utmp[i-1] + utmp[i+1] + h2*f[i])/2;
+            u[i+1] = (utmp[i+1-1] + utmp[i+1+1] + h2*f[i+1])/2;
+            u[i+2] = (utmp[i+2-1] + utmp[i+2+1] + h2*f[i+2])/2;
+            u[i+3] = (utmp[i+3-1] + utmp[i+3+1] + h2*f[i+3])/2;
+        }
+        u[n-3] = (utmp[n-3-1] + utmp[n-3+1] + h2*f[n-3])/2;
+        u[n-2] = (utmp[n-2-1] + utmp[n-2+1] + h2*f[n-2])/2;
+        u[n-1] = (utmp[n-1-1] + utmp[n-1+1] + h2*f[n-1])/2;
+            
     }
+
     free(utmp);
 }
-int power(int base,int power){
-    int i;
-    int result=1;
-    for(i=0;i<power;i++){
-        result=result*base;
-    }
-    return result;
-}
-
 
 
 void write_solution(int n, double* u, const char* fname)

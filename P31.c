@@ -1,7 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <omp.h>
+
+#include "timing.h"
 
 /* --
  * Do nsweeps sweeps of Jacobi iteration on a 1D Poisson problem
@@ -23,25 +24,37 @@ void jacobi(int nsweeps, int n, double* u, double* f)
     utmp[0] = u[0];
     utmp[n] = u[n];
 
-    /* YOUR SOLUTION HERE */
-    #pragma omp parallel
+    #pragma acc data copy(u[1:n-1]), create(utmp[1:n-1]) # a single copy of data
+    #pragma acc kernels
+    {
+    #pragma acc loop gang
     for (sweep = 0; sweep < nsweeps; sweep += 2) {
-
+        
         /* Old data in u; new data in utmp */
-        #pragma omp for shared(utmp,u,n) private(i)
-        for (i = 1; i < n; ++i){
-            utmp[i] = (u[i-1] + u[i+1] + h2*f[i])/2;}
+        #pragma acc loop vector(128)
+        for (i = 1; i < n; ++i)
+            utmp[i] = (u[i-1] + u[i+1] + h2*f[i])/2;
         
         /* Old data in utmp; new data in u */
-        #pragma omp for shared(utmp,u,n) private(i)
-        for (i = 1; i < n; ++i){
+        #pragma acc loop vector(128)
+        for (i = 1; i < n; ++i)
             u[i] = (utmp[i-1] + utmp[i+1] + h2*f[i])/2;
-        }
 
     }
-
     free(utmp);
 }
+   
+}
+
+int power(int base,int power){
+    int i;
+    int result=1;
+    for(i=0;i<power;i++){
+        result=result*base;
+    }
+    return result;
+}
+
 
 
 void write_solution(int n, double* u, const char* fname)
@@ -62,7 +75,7 @@ int main(int argc, char** argv)
     double* u;
     double* f;
     double h;
-    double tstart, tend;
+    timing_t tstart, tend;
     char* fname;
 
     /* Process arguments */
@@ -70,11 +83,6 @@ int main(int argc, char** argv)
     nsteps = (argc > 2) ? atoi(argv[2]) : 100;
     fname  = (argc > 3) ? argv[3] : NULL;
     h      = 1.0/n;
-
-    /* Print a diagnostic message */
-    #pragma omp parallel
-    if (omp_get_thread_num() == 0)
-        printf("Threads: %d\n", omp_get_num_threads());
 
     /* Allocate and initialize arrays */
     u = (double*) malloc( (n+1) * sizeof(double) );
@@ -84,15 +92,15 @@ int main(int argc, char** argv)
         f[i] = i * h;
 
     /* Run the solver */
-    tstart = omp_get_wtime();
+    get_time(&tstart);
     jacobi(nsteps, n, u, f);
-    tend = omp_get_wtime();
+    get_time(&tend);
 
-    /* Timing summary */
+    /* Run the solver */    
     printf("n: %d\n"
            "nsteps: %d\n"
            "Elapsed time: %g s\n", 
-           n, nsteps, tend-tstart);
+           n, nsteps, timespec_diff(tstart, tend));
 
     /* Write the results */
     if (fname)

@@ -95,26 +95,22 @@ int main ( void )
 /*
   Carry out the iteration for each pixel, determining COUNT.
 */
-# pragma omp parallel \
+# pragma omp parallel for schedule(static) \
   shared ( b, count, count_max, g, r, x_max, x_min, y_max, y_min ) \
   private ( i, j, k, x, x1, x2, y, y1, y2 )
 {
-# pragma omp
-  // #pragma omp parallel for schedule(static,8)
-        // #pragma omp parallel for schedule(dynamic,8)
-        // #pragma omp parallel for schedule(guided,8)
 
   for ( i = 0; i < m; i++ )
   {
+    y = ( ( double ) (     i - 1 ) * y_max   
+          + ( double ) ( n - i     ) * y_min ) 
+          / ( double ) ( n     - 1 );
+
     for ( j = 0; j < n; j++ )
     {
       x = ( ( double ) (     j - 1 ) * x_max   
           + ( double ) ( m - j     ) * x_min ) 
           / ( double ) ( m     - 1 );
-
-      y = ( ( double ) (     i - 1 ) * y_max   
-          + ( double ) ( n - i     ) * y_min ) 
-          / ( double ) ( n     - 1 );
 
       count[i][j] = 0;
 
